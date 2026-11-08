@@ -33,7 +33,7 @@ node dist/cli.js --profile web --dump-config
 
 # 一次性任务：无 API Key 时走 Mock，可直接离线跑
 node dist/cli.js --profile headless "总结一下这个仓库"
-node dist/cli.js --profile headless --json "列出当前目录" | head -20
+node dist/cli.js --profile headless --json "列出当前目录" > events.ndjson
 
 # 交互式 TUI
 node dist/cli.js tui
@@ -53,9 +53,12 @@ node dist/cli.js --profile headless "帮我看看 src/cli.ts"
 全局安装后可直接用 `dsh`：
 
 ```bash
-npm install -g .
+npm run build && npm install -g .
 dsh --profile headless "run the tests"
 ```
+
+会话与配置落在 `$DSH_HOME`（默认 `~/.dsh`）：`profiles/<name>/profile.json` 是自定义 profile，
+`sessions/<id>/session.vN.jsonl` 是 append-only 事件日志，`--session-id` 可续跑，`dsh plugin` 可管理外挂插件。
 
 ## 环境变量
 
@@ -77,6 +80,14 @@ npm run typecheck  # tsc --noEmit
 ```
 
 > 本项目按约定**不在本地跑构建与测试**，以推送后 GitHub Actions 的执行日志作为唯一验证与修复回路，详见 `docs/07-test-plan.md`。
+
+## 交付状态
+
+- 仓库：[github.com/edidada/ts-dsh](https://github.com/edidada/ts-dsh)，分支 `main`，按「一个功能一个 conventional commit + push」推进。
+- CI：`.github/workflows/ci.yml`，Node 22 / 24 矩阵，`npm ci → build → typecheck → test → 8 项 smoke`，全部 `success`。
+- 测试：`node --test test/*.test.mjs` 共 **69 个用例全通过**（core / config / session / llm / tools / agent / commands / cli / web）。
+- 里程碑 M0–M9 全部完成；期间按 GitHub Actions 日志修复了 4 轮报错（配置 insert 语义与 hint、restrict 断言、首事件断言、TS2783 重复字段）。
+- 离线可跑：无 `DEEPSEEK_API_KEY` 时自动回退 Mock 适配器，CI 与本地均无需密钥。
 
 ## 文档索引
 
