@@ -31,8 +31,14 @@ test('ToolRegistry: register / list / schemas / scoped 影子 / restrict 交集'
   assert.equal(registry.resolve('a', scope).risk, 'exec', 'scoped 覆盖同名 global');
 
   registry.restrict(scope, ['b']);
-  assert.equal(registry.resolve('a', scope), undefined, '被过滤的工具不可解析');
   assert.equal(registry.resolve('b', scope).name, 'b');
+  assert.equal(registry.resolve('a', scope).risk, 'exec', 'scope-local 注册在 restrict 之后合入，仍可见');
+
+  // restrict 只过滤 GLOBAL 集合；没有 scope-local 注册时，被过滤的工具解析不到
+  const scope2 = newScopeKey('agent-2');
+  registry.restrict(scope2, ['b']);
+  assert.equal(registry.resolve('a', scope2), undefined, '被过滤的 global 工具不可解析');
+  assert.equal(registry.resolve('b', scope2).name, 'b');
   assert.equal(registry.has('a'), true, 'global 仍可见');
   fs.rmSync(cwd, { recursive: true, force: true });
 });
