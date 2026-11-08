@@ -1,0 +1,28 @@
+{
+  "name": "ts-dsh",
+  "version": "0.1.0",
+  "description": "TypeScript 教学级复刻：DeepSeek Harness (dsh) 插件化 Agent 运行时",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "bin": {
+    "dsh": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "dsh": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  }
+}
