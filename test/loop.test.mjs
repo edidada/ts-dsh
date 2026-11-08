@@ -47,7 +47,9 @@ test('AgentLoop: 两步 turn（tool_call → tool/result → 最终回答），d
   assert.equal(result.cancelled, false);
 
   const events = ctx.sessions.events(ctx.id);
-  assert.equal(events[0].type, 'turn/start');
+  assert.equal(events[0].type, 'session/created');
+  assert.equal(events[1].type, 'turn/start');
+  assert.ok(events.findIndex((e) => e.type === 'turn/start') < events.findIndex((e) => e.type === 'user/message'));
   assert.equal(events.at(-1).type, 'turn/end');
   assert.equal(events.filter((e) => e.type === 'tool/call').length, 1);
   assert.equal(events.filter((e) => e.type === 'tool/result').length, 1);
