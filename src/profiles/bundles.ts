@@ -31,10 +31,14 @@ const minimalRows: ConfigRow[] = [
   { id: 'sessions', use: 'core/sessions' },
   { id: 'llm', use: 'core/llm' },
   { id: 'llm-mock', use: 'llm/mock' },
+  { id: 'approval', use: 'core/approval' },
+  { id: 'tools', use: 'core/tools' },
+  { id: 'tools-builtin', use: 'tools/builtin' },
   { id: 'system-prompt', use: 'core/system-prompt' },
   { id: 'agents', use: 'core/agents' },
   { id: 'agent-loop', use: 'core/agent-loop', config: { maxSteps: 4 } },
   { id: 'commands', use: 'core/commands' },
+  { id: 'commands-builtin', use: 'commands/builtin' },
   { id: 'app', use: 'app/sdk' },
 ];
 

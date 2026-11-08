@@ -16,6 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24]
+    env:
+      # CI 无 DeepSeek Key：强制 Mock 适配器，保证全离线可跑
+      DSH_MODEL_ADAPTER: mock
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,3 +52,21 @@ jobs:
 
       - name: Smoke / --dump-config-schema
         run: node dist/cli.js --dump-config-schema
+
+      - name: Smoke / headless (offline mock)
+        run: node dist/cli.js --profile headless "hello from CI"
+
+      - name: Smoke / headless --json
+        run: node dist/cli.js --profile headless --json "json smoke"
+
+      - name: Smoke / stdin task
+        run: echo "stdin smoke" | node dist/cli.js --profile headless -
+
+      - name: Smoke / session resume
+        run: |
+          node dist/cli.js --profile headless --json "first" > /tmp/dsh-first.ndjson
+          SID=$(grep -o '"sessionId":"[^"]*"' /tmp/dsh-first.ndjson | sed -n '1p' | cut -d'"' -f4)
+          node dist/cli.js --profile headless --session-id "$SID" "second"
+
+      - name: Smoke / plugin manager
+        run: node dist/cli.js plugin --profile headless list

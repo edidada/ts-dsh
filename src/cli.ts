@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 /**
  * `dsh` 启动器：参数解析 → 组合配置 → 挂载插件 → 运行 app。
- *
- * M3 当前实现到「组合配置 + --dump-config」；M8 会接入 PluginHost 与各 app。
- * 入口始终可构建、可测试，保证每个功能提交都能过 CI。
+ * 一次运行 = Profile/Bundle/Patch 组合出的插件树，逐行 mount 成 ctx 上的服务。
  */
 import { pathToFileURL } from 'node:url';
 import { VERSION, NAME } from './version.js';
+import { Context } from './core/context.js';
+import { PluginHost } from './core/plugin.js';
+import { DshError, describe } from './core/errors.js';
+import type { ComposeResult } from './config/types.js';
 import { composeConfig, dumpConfig } from './config/compose.js';
 import { configSchema } from './config/schema.js';
 import { loadHomePatch, loadPatch, resetProfile } from './config/loader.js';
 import { BUNDLES, PROFILES, getProfile, profileNames } from './profiles/index.js';
-import { DshError, describe } from './core/errors.js';
+import { createFactories, factoryNames } from './profiles/factories.js';
+import { createRuntime, type App, type Runtime } from './apps/runtime.js';
+import { runPluginManager } from './apps/plugin-manager.js';
 import { dshHome } from './util/env.js';
 import { err, out, redact } from './util/log.js';
 
@@ -45,6 +49,9 @@ Examples:
   dsh --profile web --dump-config
   dsh --profile headless "run the tests"
   dsh headless --json "list the files"
+  dsh tui
+  dsh web --no-open
+  dsh plugin --profile tui add my-plugin
 `;
 
 export interface LauncherArgs {
@@ -106,6 +113,25 @@ export function parseLauncher(argv: string[]): LauncherArgs {
   };
 }
 
+/** 把组合出的插件树挂载成一个可运行的 ctx（导出供集成测试复用）。 */
+export async function boot(runtime: Runtime, composed: ComposeResult): Promise<{ ctx: Context; host: PluginHost }> {
+  const factories = createFactories(runtime);
+  const unknown = composed.rows.filter((row) => !factories.has(row.use));
+  if (unknown.length > 0) {
+    const first = unknown[0]!;
+    throw new DshError(
+      'CFG_UNKNOWN_USE',
+      `config row "${first.id}" references unknown plugin "${first.use}"`,
+      `可用 use 值：${factoryNames(factories).join(', ')}`,
+    );
+  }
+  const ctx = new Context();
+  const host = new PluginHost(ctx, factories);
+  await host.boot(composed.rows);
+  ctx.provide('config', composed);
+  return { ctx, host };
+}
+
 export async function run(argv: string[]): Promise<number> {
   const args = parseLauncher(argv);
 
@@ -114,6 +140,11 @@ export async function run(argv: string[]): Promise<number> {
   if (args.help) { out(HELP); return 0; }
 
   const home = dshHome();
+
+  if (args.raw[0] === 'plugin') {
+    const profile = args.profile === 'plugin' ? 'headless' : args.profile;
+    return runPluginManager({ profile, appArgs: args.appArgs }, home);
+  }
 
   if (args.fromDefault) {
     const template = PROFILES[args.fromDefault];
@@ -144,10 +175,27 @@ export async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  // M8 之前只提示组合结果；应用启动器在 apps 里程碑接入。
-  err(`profile "${profile.name}" composed ${composed.rows.length} plugin rows (${composed.layers.length} layers); app runtime wired in M8.`);
-  out(HELP);
-  return 0;
+  const runtime = createRuntime({
+    home,
+    profileName: profile.name,
+    composed,
+    appArgs: args.appArgs,
+  });
+  const { ctx, host } = await boot(runtime, composed);
+  try {
+    const app = ctx.peek<App>('app');
+    if (!app) {
+      throw new DshError(
+        'APP_NOT_FOUND',
+        `profile "${profile.name}" has no app row`,
+        '在 profile 中叠加 dsh-headless / dsh-web-app / dsh-tui / dsh-sdk-app / dsh-acp-app 之一。',
+      );
+    }
+    return await app.run(runtime, ctx);
+  } finally {
+    host.dispose();
+    ctx.dispose();
+  }
 }
 
 const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
