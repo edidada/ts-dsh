@@ -40,7 +40,7 @@ async function handleRpc(request: unknown, runtime: Runtime, ctx: Context): Prom
       else sessionId = sessions.create(task.slice(0, 40)).header.id;
       runtime.sessionId = sessionId;
       const result = await ctx.get<AgentLoop>('agentLoop').run(sessionId, { input: task, maxSteps: runtime.maxSteps });
-      return { jsonrpc: '2.0', id, result: { sessionId, ...result } };
+      return { jsonrpc: '2.0', id, result };
     }
     default:
       return { jsonrpc: '2.0', id, error: { code: -32601, message: `method not found: ${method || '(empty)'}` } };

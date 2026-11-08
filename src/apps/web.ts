@@ -107,7 +107,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse, runti
     else sessionId = sessions.create(task.slice(0, 40)).header.id;
     runtime.sessionId = sessionId;
     const result = await loop.run(sessionId, { input: task, maxSteps: runtime.maxSteps });
-    sendJson(res, 200, { sessionId, ...result });
+    sendJson(res, 200, result);
     return;
   }
   sendJson(res, 404, { error: 'not found' });
