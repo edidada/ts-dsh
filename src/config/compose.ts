@@ -26,9 +26,13 @@ function applyOp(rows: ConfigRow[], op: PatchOp, layer: string): void {
       return;
     }
     case 'insert': {
-      const existing = indexOfId(rows, op.row.id);
-      if (existing >= 0) rows.splice(existing, 1);
       const row = cloneRow(op.row, layer);
+      const existing = indexOfId(rows, op.row.id);
+      // 同 id 已存在时按 replace 处理：保持原有位置，避免行被挪到末尾
+      if (existing >= 0) {
+        rows[existing] = row;
+        return;
+      }
       let at = -1;
       if (op.before) at = indexOfId(rows, op.before);
       if (at < 0 && op.after) {
@@ -70,7 +74,7 @@ function validate(rows: ConfigRow[], knownUses?: Set<string>): void {
       throw new DshError(
         'CFG_UNKNOWN_USE',
         `config row "${row.id}" references unknown plugin "${row.use}"`,
-        `可用 use 值：${[...knownUses].sort().join(', ')}`,
+        `未知插件 "${row.use}" 未在工厂表中登记；可用 use 值：${[...knownUses].sort().join(', ')}`,
       );
     }
   }
